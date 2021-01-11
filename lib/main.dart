@@ -1,4 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
+import 'data/api_service.dart';
+import 'data/model/movie.dart';
 
 void main() {
   runApp(MoviesBrowserApp());
@@ -34,14 +39,55 @@ class MoviesBrowserApp extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  ApiService apiService;
+  Future<List<Movie>> futureMovies;
+
+  @override
+  void initState() {
+    super.initState();
+    _getApiKey().then((apiKey) {
+      setState(() {
+        apiService = ApiService(apiKey: apiKey);
+        futureMovies = apiService.fetchMovies();
+      });
+    });
+  }
+
+  Future<String> _getApiKey() async {
+    final json =
+        await DefaultAssetBundle.of(context).loadString('assets/secrets.json');
+    return jsonDecode(json)['api_key'];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Home'),
       ),
-      body: Container(),
+      body: FutureBuilder<List<Movie>>(
+        future: futureMovies,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return ListView.builder(
+              padding: EdgeInsets.all(8.0),
+              itemBuilder: (_, int index) => Text(snapshot.data[index].title),
+              itemCount: snapshot.data.length,
+            );
+          } else if (snapshot.hasError) {
+            return Text("${snapshot.error}");
+          }
+
+          // By default, show a loading spinner.
+          return CircularProgressIndicator();
+        },
+      ),
     );
   }
 }
