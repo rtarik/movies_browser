@@ -54,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _getApiKey().then((apiKey) {
       setState(() {
         apiService = ApiService(apiKey: apiKey);
+        apiService.getConfiguration();
         futureMovies = apiService.fetchMovies();
       });
     });
@@ -75,19 +76,88 @@ class _HomeScreenState extends State<HomeScreen> {
         future: futureMovies,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            return ListView.builder(
-              padding: EdgeInsets.all(8.0),
-              itemBuilder: (_, int index) => Text(snapshot.data[index].title),
-              itemCount: snapshot.data.length,
+            return MoviesList(
+              movies: snapshot.data,
             );
           } else if (snapshot.hasError) {
             return Text("${snapshot.error}");
           }
 
           // By default, show a loading spinner.
-          return CircularProgressIndicator();
+          return Center(child: CircularProgressIndicator());
         },
       ),
     );
+  }
+}
+
+class MoviesList extends StatelessWidget {
+  final List<Movie> movies;
+
+  const MoviesList({
+    Key key,
+    @required this.movies,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: EdgeInsets.all(8.0),
+      itemBuilder: (_, int index) => MovieItem(movie: movies[index]),
+      itemCount: movies.length,
+      separatorBuilder: (BuildContext context, int index) {
+        return Divider(
+          thickness: 2.0,
+        );
+      },
+    );
+  }
+}
+
+class MovieItem extends StatelessWidget {
+  const MovieItem({
+    Key key,
+    @required this.movie,
+  }) : super(key: key);
+
+  final Movie movie;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 10.0),
+      child: Row(children: [
+        Container(
+          margin: EdgeInsets.only(right: 16.0),
+          child: Image.network(_getPosterUrl(movie)),
+        ),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                margin: EdgeInsets.only(bottom: 8.0),
+                child: Text(movie.title,
+                    style: Theme.of(context).textTheme.subtitle1),
+              ),
+              Text(
+                movie.overview,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        )
+      ]),
+    );
+  }
+
+  String _getPosterUrl(Movie movie) {
+    final config = ApiService.configuration;
+    if (config != null) {
+      return config.baseUrl + config.posterSize + movie.posterPath;
+    } else {
+      return "";
+    }
   }
 }
